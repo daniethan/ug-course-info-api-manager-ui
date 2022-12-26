@@ -1,3 +1,4 @@
+import asyncio
 import customtkinter as ctk
 import tkinter as tk
 import config.api_config as api_config
@@ -182,8 +183,6 @@ class UniversityManagerFrame(ctk.CTkFrame):
         self.list_university.configure(selectbackground="#c4c4c4")
         self.list_university.configure(selectforeground="black")
 
-        #configure combobox values
-        self.combo_university.configure(values=self.get_universities())
 
         self.lbl_universitys_head = ctk.CTkLabel(self)
         self.lbl_universitys_head.place(relx=0.217, rely=0.022, height=39
@@ -197,6 +196,10 @@ class UniversityManagerFrame(ctk.CTkFrame):
         self.lbl_universitys_head.configure(text='''UNIVERSITY MANAGER''')
 
         self.lbl_universitys_head.configure(compound='center')
+        
+        #configure combobox values
+        self.combo_university.configure(values=asyncio.run(self.get_universities()))
+
     def on_btn_add_university(self):
         print("Adding university in progress")
         context = {
@@ -205,10 +208,10 @@ class UniversityManagerFrame(ctk.CTkFrame):
                 "district": self.district.get()
         }
 
-        post = api_config.APIResources.post_api_resource(
+        post = asyncio.run(api_config.APIResources.post_api_resource(
                                                         uri='universities/create-university',
                                                         context=context
-                                                        )
+                                                        ))
         print(f"Post Operation Status: {post}")
 
     def on_btn_edit_university(self):
@@ -221,8 +224,8 @@ class UniversityManagerFrame(ctk.CTkFrame):
         }
         print(f"Context: {context}")
 
-    def get_universities(self):       
-        response = api_config.APIResources.get_api_resource(resource='universities')
+    async def get_universities(self):       
+        response = await api_config.APIResources.get_api_resource(resource='universities')
         if response.ok:
             universities = sorted([univ.get('name') for univ in response.json()])
         else:

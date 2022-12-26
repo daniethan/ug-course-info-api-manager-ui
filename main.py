@@ -1,3 +1,4 @@
+import asyncio
 import customtkinter
 from api_entity import (
     subject_frame,

@@ -1,3 +1,4 @@
+import asyncio
 import customtkinter as ctk
 import tkinter as tk
 import config.api_config as api_config
@@ -6,12 +7,6 @@ import config.api_config as api_config
 class CourseManagerFrame(ctk.CTkFrame):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
-        #RESOURCES
-        self.subject_resrc = get_resource(resource='subjects')
-        self.course_resrc = get_resource(resource='courses')
-        self.type_resrc = get_resource(resource='course-types')
-        self.univ_resrc = get_resource(resource='universities')
 
         self.course_subjects = dict()
         self.course_subjects_edit = dict()
@@ -130,13 +125,11 @@ class CourseManagerFrame(ctk.CTkFrame):
         self.entry_type.place(relx=0.182, rely=0.157, height=22, relwidth=0.505
                 , bordermode='ignore')
         self.entry_type.configure(textvariable=self.coursetype)
-        self.entry_type.configure(values=sorted([x[-1] for x in self.type_resrc]))
 
         self.entry_university = tk.ttk.Combobox(self.frm_add_course)
         self.entry_university.place(relx=0.182, rely=0.209, height=22
                 , relwidth=0.505, bordermode='ignore')
         self.entry_university.configure(textvariable=self.university)
-        self.entry_university.configure(values=sorted([x[-1] for x in self.univ_resrc]))
 
         #new-frame here for cut-offs
         self.frm_add_cut_off = tk.LabelFrame(self.frm_add_course)
@@ -382,7 +375,6 @@ class CourseManagerFrame(ctk.CTkFrame):
         self.entry_new_type.place(relx=0.242, rely=0.209, height=22
                 , relwidth=0.522, bordermode='ignore')
         self.entry_new_type.configure(textvariable=self.new_type)
-        self.entry_new_type.configure(values=sorted([x[-1] for x in self.type_resrc]))
 
         self.btn_edit_course = ctk.CTkButton(self.frm_edit_course, fg_color='green', hover_color='lightgreen')
         self.btn_edit_course.place(relx=0.09, rely=0.941, height=27
@@ -393,7 +385,6 @@ class CourseManagerFrame(ctk.CTkFrame):
         self.combo_course_search.place(relx=0.242, rely=0.052, relheight=0.038
                 , relwidth=0.74, bordermode='ignore')
         self.combo_course_search.configure(textvariable=self.edit_course)
-        self.combo_course_search.configure(values=sorted([x[-1] for x in self.course_resrc]))
        
         #new-frame-here
         self.frm_edit_cut_off = tk.LabelFrame(self.frm_edit_course)
@@ -540,6 +531,20 @@ class CourseManagerFrame(ctk.CTkFrame):
         self.btn_add_subject_edit.configure(command=lambda to_edit=True :self.on_btn_add(to_edit))
         self.btn_add_subject_edit.configure(text='''Add Selected Subjects''')
 
+        #Update fields
+        self.type_resrc = asyncio.run(get_resource(resource='course-types'))
+        self.entry_type.configure(values=sorted([x[-1] for x in self.type_resrc]))
+        self.entry_new_type.configure(values=sorted([x[-1] for x in self.type_resrc]))
+
+        self.univ_resrc = asyncio.run(get_resource(resource='universities'))
+        self.entry_university.configure(values=sorted([x[-1] for x in self.univ_resrc]))
+
+        self.course_resrc = asyncio.run(get_resource(resource='courses'))
+        self.combo_course_search.configure(values=sorted([x[-1] for x in self.course_resrc]))
+
+        #other resources
+        self.subject_resrc = asyncio.run(get_resource(resource='subjects'))
+
 
     def on_btn_add(self, to_edit: bool=False):
         subjects = list()
@@ -595,30 +600,30 @@ class CourseManagerFrame(ctk.CTkFrame):
         course_data = {
                         'name': self.course_name.get(),
                         'code': self.course_code.get(),
-                        'univ_code': get_resource_code(resrc=self.university.get(), collection=self.univ_resrc),
+                        'univ_code': asyncio.run(get_resource_code(resrc=self.university.get(), collection=self.univ_resrc)),
                         'cut_off_male': float(self.cut_off_M.get()) if self.cut_off_M.get() != '' else float('0.0'),
                         'cut_off_female': float(self.cut_off_F.get()) if self.cut_off_F.get() != '' else float('0.0'),
-                        'course_type': get_resource_code(resrc=self.coursetype.get(), collection=self.type_resrc),
+                        'course_type': asyncio.run(get_resource_code(resrc=self.coursetype.get(), collection=self.type_resrc)),
                     }
                
         self.list_subject.delete(0, tk.END)
 
         #add the course to API database      
-        post = api_config.APIResources.post_api_resource(
+        post = asyncio.run(api_config.APIResources.post_api_resource(
                                                         uri='courses/create-course',
                                                         context=course_data
-                                                        )
+                                                        ))
         print(f"Post Operation Status: {post}")
 
         if len(self.course_subjects.values())>0:
             for subj_type in self.course_subjects.keys():
                 for subject in self.course_subjects.get(subj_type):
-                    post = api_config.APIResources.post_api_resource(
+                    post = asyncio.run(api_config.APIResources.post_api_resource(
                                                                         uri=f'subjects/add-course-subject/?subj_type={subj_type}',
                                                                         context={
                                                                             "subject_name": subject,
                                                                             "course_code": course_data["code"]
-                                                                        })
+                                                                        }))
                     print(f"{subject} adding as {subj_type} returned status: {post}")
         else: print("No Subjects Changed")
         self.list_subject.insert(4, f"                    COURSE ADDED")
@@ -626,18 +631,18 @@ class CourseManagerFrame(ctk.CTkFrame):
 
     def on_btn_save_changes(self):
         course_data_edit = {
-                            'course': get_resource_code(resrc=self.edit_course.get(), collection=self.course_resrc),
+                            'course': asyncio.run(get_resource_code(resrc=self.edit_course.get(), collection=self.course_resrc)),
                             'new-name': self.new_name.get() if self.new_name.get() != '' else None,
                             'new-code': self.new_code.get() if self.new_code.get() != '' else None,
                             'cut_off_male': float(self.cut_off_edit_M.get()) if self.cut_off_edit_M.get() != '' else None,
                             'cut_off_female': float(self.cut_off_edit_F.get()) if self.cut_off_edit_F.get() != '' else None,
-                            'new-type': get_resource_code(
+                            'new-type': asyncio.run(get_resource_code(
                                                             resrc=self.new_type.get(), 
                                                             collection=self.type_resrc
-                                                            ) if self.new_type.get() != '' else None,
+                                                            )) if self.new_type.get() != '' else None,
                         }
         
-        put = api_config.APIResources.update_api_resource(
+        put = asyncio.run(api_config.APIResources.update_api_resource(
                                                             uri='courses/edit-course',
                                                             context={
                                                                         'course': course_data_edit["course"],
@@ -647,19 +652,19 @@ class CourseManagerFrame(ctk.CTkFrame):
                                                                         'cut_off_female': course_data_edit["cut_off_female"],
                                                                         'course_type': course_data_edit["new-type"],
                                                                     }
-                                                            )
+                                                            ))
 
         self.list_subject_edit.delete(0, tk.END)
         
         if len(self.course_subjects_edit.values())>0:
             for subj_type in self.course_subjects_edit.keys():
                 for subject in self.course_subjects_edit.get(subj_type):
-                    post = api_config.APIResources.post_api_resource(
+                    post = asyncio.run(api_config.APIResources.post_api_resource(
                                                                         uri=f'subjects/add-course-subject/?subj_type={subj_type}',
                                                                         context={
                                                                             "subject_name": subject,
                                                                             "course_code": course_data_edit["course"]
-                                                                        })
+                                                                        }))
                     print(f"{subject} adding as {subj_type} returned status: {post}")
         else: print("No Subjects Changed")
 
@@ -668,6 +673,7 @@ class CourseManagerFrame(ctk.CTkFrame):
 
     def on_radio_click_edit(self):       
         #clear the whole listbox
+
         self.list_subject.delete(0,tk.END)
         self.list_subject_edit.delete(0,tk.END)
 
@@ -682,8 +688,8 @@ class CourseManagerFrame(ctk.CTkFrame):
         for i,sub in enumerate(self.subject_resrc):
             self.list_subject.insert(i, f"    {sub}")
 
-def get_resource(resource: str='subjects'):
-    response = api_config.APIResources.get_api_resource(resource=resource)
+async def get_resource(resource: str='subjects'):
+    response = await api_config.APIResources.get_api_resource(resource=resource)
     if response.ok:
         if resource in ('course-types', 'universities', 'courses'):
             resource_return = [(resrc.get('code'), resrc.get('name')) for resrc in response.json()]
@@ -695,7 +701,7 @@ def get_resource(resource: str='subjects'):
     
     return resource_return
 
-def get_resource_code(resrc: str, collection: list):
+async def get_resource_code(resrc: str, collection: list):
     for code,name in collection:
         if name==resrc:
             return code

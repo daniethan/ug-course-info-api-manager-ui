@@ -1,3 +1,4 @@
+import asyncio
 import customtkinter as ctk
 import tkinter as tk
 import config.api_config as api_config
@@ -154,8 +155,6 @@ class CourseTypeManagerFrame(ctk.CTkFrame):
         self.list_coursetypes.configure(selectbackground="#c4c4c4")
         self.list_coursetypes.configure(selectforeground="black")
 
-        #configure combobox values
-        self.combo_type.configure(values=self.get_types())
 
         self.lbl_type_mngr_head = ctk.CTkLabel(self)
         self.lbl_type_mngr_head.place(relx=0.217, rely=0.022, height=39
@@ -169,16 +168,19 @@ class CourseTypeManagerFrame(ctk.CTkFrame):
         self.lbl_type_mngr_head.configure(text='''COURSE-TYPE MANAGER''', text_font=("Roboto Medium", 20))
         self.lbl_type_mngr_head.configure(compound='center')
 
+        #configure combobox values
+        self.combo_type.configure(values= asyncio.run(self.get_types()))
+
     def on_btn_add_subject(self):
         print("Adding Course-type in progress")
         context = {
                 "name": self.name.get(),
                 "code": self.code.get()
         }
-        post = api_config.APIResources.post_api_resource(
+        post = asyncio.run(api_config.APIResources.post_api_resource(
                                                         uri='course-types/create-course-type',
                                                         context=context
-                                                        )
+                                                        ))
         print(f"Post Operation Status: {post}")
 
     def on_btn_edit_subject(self):
@@ -190,8 +192,8 @@ class CourseTypeManagerFrame(ctk.CTkFrame):
         }
         print(f"Context: {context}")
 
-    def get_types(self):
-        response = api_config.APIResources.get_api_resource(resource='course-types')
+    async def get_types(self):
+        response = await api_config.APIResources.get_api_resource(resource='course-types')
         if response.ok:
             coursetypes = sorted([type.get('name') for type in response.json()])
         else:

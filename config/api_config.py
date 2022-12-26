@@ -1,3 +1,4 @@
+import asyncio
 import requests, socket
 from tkinter import messagebox
 from decouple import config
@@ -8,7 +9,7 @@ urls = {
 }
 
 
-def is_connected(host, port=config('PORT', cast=int)):
+async def is_connected(host, port=config('PORT', cast=int)):
     try:
         #try to connect to the host to check if it's reachable
         sock = socket.create_connection(address=(host, port), timeout=5)
@@ -21,27 +22,28 @@ def is_connected(host, port=config('PORT', cast=int)):
     return False
 
 
-def get_base_uri(base_list: list[str]):
+async def get_base_uri(base_list: list[str]):
     for uri in base_list:
-        if is_connected(uri):
+        is_con = await is_connected(uri)
+        if is_con:
             return uri
-    return urls.get('online')
+        return urls.get('online')
 
 
 class APIResources:
-    BASE_URL = get_base_uri(urls.values())
+    BASE_URL = asyncio.run(get_base_uri(urls.values()))
 
     @staticmethod
-    def get_api_resource(resource: str) -> list:
+    async def get_api_resource(resource: str) -> list:
         response = requests.get(url=f"{APIResources.BASE_URL}/{resource}")
         return response
 
     @staticmethod
-    def post_api_resource(uri: str, context: dict):
+    async def post_api_resource(uri: str, context: dict):
         response = requests.post(url=f"{APIResources.BASE_URL}/{uri}", json=context)
         return response.status_code
     
     @staticmethod
-    def update_api_resource(uri: str, context: dict):
+    async def update_api_resource(uri: str, context: dict):
         response = requests.put(url=f"{APIResources.BASE_URL}/{uri}", json=context)
         return response.status_code

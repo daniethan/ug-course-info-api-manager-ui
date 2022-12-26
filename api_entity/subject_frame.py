@@ -1,3 +1,4 @@
+import asyncio
 import customtkinter as ctk
 import tkinter as tk
 import config.api_config as api_config
@@ -154,8 +155,6 @@ class SubjectManagerFrame(ctk.CTkFrame):
         self.list_subjects.configure(selectbackground="#c4c4c4")
         self.list_subjects.configure(selectforeground="black")
 
-        #configure combobox values
-        self.combo_subject.configure(values=self.get_subjects())
 
         self.lbl_subjects_head = ctk.CTkLabel(self)
         self.lbl_subjects_head.place(relx=0.217, rely=0.022, height=39
@@ -169,6 +168,9 @@ class SubjectManagerFrame(ctk.CTkFrame):
         self.lbl_subjects_head.configure(text='''SUBJECTS MANAGER''', text_font=("Roboto Medium", 20))
         self.lbl_subjects_head.configure(compound='center')
 
+        #configure combobox values
+        self.combo_subject.configure(values=asyncio.run(self.get_subjects()))
+
     def on_btn_add_subject(self):
         print("Adding subject in progress")
         context = {
@@ -176,14 +178,14 @@ class SubjectManagerFrame(ctk.CTkFrame):
                 "code": self.code.get()
         }
 
-        post = api_config.APIResources.post_api_resource(
+        post = asyncio.run(api_config.APIResources.post_api_resource(
                                                         uri='subjects/add_subject',
                                                         context=context
-                                                        )
+                                                        ))
         print(f"Post Operation Status: {post}")
 
     def on_btn_edit_subject(self):
-        print("Editing subject in progress")
+        # print("Editing subject in progress")
         context = {
                 "subject": self.combobox.get(),
                 "name": self.new_name.get(),
@@ -191,10 +193,10 @@ class SubjectManagerFrame(ctk.CTkFrame):
         }
 
         # post = api_config.APIResources.post_api_resource(uri='subjects/add_subject')
-        print(f"Context: {context}")
+        # print(f"Context: {context}")
 
-    def get_subjects(self):
-        response = api_config.APIResources.get_api_resource(resource='subjects')
+    async def get_subjects(self):
+        response = await api_config.APIResources.get_api_resource(resource='subjects')
         if response.ok:
             subjects = sorted([subject.get('name') for subject in response.json()])
         else:
